@@ -34,3 +34,6 @@ cufile.log
 .claude/
 .idea/
 link
+
+cache
+!data/*.parquet

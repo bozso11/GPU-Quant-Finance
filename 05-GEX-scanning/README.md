@@ -1,48 +1,40 @@
-# 05 - PyTorch Options Scanning
+# 05 - GEX Scanning: live gamma exposure, American options, Numba CUDA
 
-Pull, solve IV/Greeks, rank, repeat.
+Code for the QuantPy video [Gamma Exposure and Market Volatility](https://youtu.be/2TC2xNPfLdk).
 
-**Goal:** scan the 150 most-active optionable US names, continuously
+| Notebook | In the video | What it is |
+|---|---|---|
+| [gex_dealer_hedge_example.ipynb](gex_dealer_hedge_example.ipynb) | 3:22 | One SPY put and one SPY call at two closes: spot, premium, delta, gamma, and the dealer's hedge. Runs from the four data files in `data/`, no API key needed. |
+| [intraday_American_IV_GEX_Dash_Only.ipynb](intraday_American_IV_GEX_Dash_Only.ipynb) | 6:41 | The live GEX dashboard: the 100 most options-traded US names, open interest once a day, quotes every update, American implied vol and gamma on the GPU, alerts and a gamma-flip table. |
+| [intraday_American_IV_GEX.ipynb](intraday_American_IV_GEX.ipynb) | 8:23 | How it is built: Theta Data pull and cache, QuantLib reference, Numba CPU and Numba CUDA engines, validation, timing, then the live session. |
 
-**Result:** 12.4 scans/min across ~270K contracts (~4,827 full scans per trading day). fp32 GPU solves the entire ~270K-contract universe in ~25 ms.
+## Measured
 
-## Measured Results (live market)
+One-minute snapshot of 99 tickers, 85,814 options: implied vol solved on a 200-step Cox-Ross-Rubinstein binomial tree,
+gamma over 81 spot prices (69.4 M gamma evaluations per 10 minutes). NVIDIA RTX PRO 6000 Blackwell (96GB),
+AMD Threadripper PRO 7965WX. From `intraday_American_IV_GEX.ipynb`.
 
-| engine | contracts | sec | contracts/sec |
-|---|---|---|---|
-| PyTorch GPU fp32 | 270,480 | 0.02 | 10,908,824 |
-| PyTorch GPU | 270,480 | 1.29 | 209,432 |
-| PyTorch CPU fp32 | 270,480 | 1.69 | 159,640 |
-| PyTorch CPU | 270,480 | 2.02 | 133,626 |
-| CuPy | 270,480 | 4.46 | 60,580 |
-| CuPy fp32 | 270,480 | 4.61 | 58,662 |
-| NumPy | 150,000 | 80.82 | 1,856 (extrapolated) |
+| engine | one minute | against QuantLib |
+|---|---|---|
+| QuantLib, Python wrapper (extrapolated) | 1,111 s | 1x |
+| Numba, CPU | 5.3 s | 215x |
+| Numba CUDA | 0.69 s | 1,555x |
 
-- Warm timings (compile pre-market)
-- Full IV solve (30 Newton iterations) + 6 Greeks, fused
-- fp32 vs fp64: a millionth of a vol point -- does not matter at penny precision
-- Also tested on DGX Spark (GB10, aarch64): same universe in 0.18s fp32 -- [as-run notebook](options_scanner_pytorch_DGX_Spark.ipynb)
+Validation against QuantLib on the same snapshot: median implied-vol difference 1e-5, SPY GEX at spot within 0.002 bn $ (table in the notebook).
 
-## Quickstart
+## Run it
 
 ```
-cd 05-pytorch-options-scanning
+cd 05-GEX-scanning
 uv sync
-cp .env.example .env   # add your THETADATA_API_KEY
-uv run jupyter lab options_scanner_pytorch.ipynb
+cp .env.example .env            # THETADATA_API_KEY=...
+uv run jupyter lab intraday_American_IV_GEX_Dash_Only.ipynb
 ```
 
-**Requirements:**
-- NVIDIA GPU
-- Running Theta Terminal
-- Linux: C toolchain for torch.compile -- `sudo apt install build-essential python3-dev`
+Requirements: NVIDIA GPU (CUDA 13 wheels through `numba-cuda[cu13]`), a [Theta Data](https://www.thetadata.net) subscription for the
+two live notebooks ([Python API docs](https://docs.thetadata.us/Python-Library/Getting-Started.html)). Dividend yields come from yfinance.
+Both live notebooks call `cuda.select_device(1)` (this box has two GPUs); on a single-GPU machine set it to 0.
 
-## Validation
-
-Results are validated using QuantLib: [validate_engines_vs_quantlib.ipynb](validate_engines_vs_quantlib.ipynb)
-Rendered record -- re-run needs a cached market day (not included).
-
-## Hardware
-
-RTX PRO 6000 Blackwell (96GB) | 24-core Threadripper | 256GB RAM
-Data: [Theta Data](https://www.thetadata.net)
+GEX = gamma x open interest x 100 x spot^2 x 0.01, calls positive, puts negative. The sign assumes dealers are long the calls
+and short the puts that customers trade; that is an assumption, not an observation. The 3-year SPY study behind the
+regime claim is in [05-GEX-research](../05-GEX-research). Educational analysis, not a trading strategy, not financial advice.

@@ -48,7 +48,7 @@ next 30 minutes; 4 flip crossings; 5 the 0DTE layer; 6 persistence; 7 intraday r
 ## How to rerun
 
 ```
-cd 05-pytorch-options-scanning
+cd 05-GEX-research
 uv sync                                                    # numba, numba-cuda[cu13], quantlib, scipy, thetadata, polars, jupyter
 uv run python gex_history/download.py --intraday           # ~15 min with 8 workers; resumable; needs THETADATA_API_KEY in .env
 uv run python gex_history/build_notebook.py
