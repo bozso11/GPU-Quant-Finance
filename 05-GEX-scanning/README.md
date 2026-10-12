@@ -36,5 +36,5 @@ two live notebooks ([Python API docs](https://docs.thetadata.us/Python-Library/G
 Both live notebooks call `cuda.select_device(1)` (this box has two GPUs); on a single-GPU machine set it to 0.
 
 GEX = gamma x open interest x 100 x spot^2 x 0.01, calls positive, puts negative. The sign assumes dealers are long the calls
-and short the puts that customers trade; that is an assumption, not an observation. The 3-year SPY study behind the
-regime claim is in [05-GEX-research](../05-GEX-research). Educational analysis, not a trading strategy, not financial advice.
+and short the puts that customers trade; that is an assumption, not an observation.  
+Educational analysis, not a trading strategy, not financial advice.
